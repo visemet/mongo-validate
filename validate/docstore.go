@@ -1,7 +1,6 @@
-package docstore
+package validate
 
 import (
-	"common"
 	"encoding/json"
 	"fmt"
 	"gopkg.in/mgo.v2"
@@ -10,14 +9,14 @@ import (
 
 type anyMap map[interface{}]interface{}
 
-type KeyedDocumentStore struct {
+type DocStore struct {
 	fields []string
 	data   anyMap
 }
 
 func coerceHashable(value interface{}) interface{} {
 	switch value.(type) {
-	case []interface{}, common.Document: // handle unhashable types
+	case []interface{}, Document: // handle unhashable types
 		return fmt.Sprintf("%v", value)
 	}
 	return value
@@ -25,7 +24,7 @@ func coerceHashable(value interface{}) interface{} {
 
 // Appends the specified document to the array (or creates one)
 // corresponding to its fields that are indexed
-func (kds KeyedDocumentStore) Put(doc common.Document) error {
+func (kds DocStore) Put(doc Document) error {
 	diskLoc, ok := doc.DiskLoc()
 	if !ok {
 		data, err := json.MarshalIndent(doc, "", "  ")
@@ -52,15 +51,15 @@ func (kds KeyedDocumentStore) Put(doc common.Document) error {
 
 	// Use an array to handle non-unique indexes
 	if _, ok := curr[lastValue]; !ok {
-		curr[lastValue] = []common.DiskLoc{}
+		curr[lastValue] = []DiskLoc{}
 	}
-	curr[lastValue] = append(curr[lastValue].([]common.DiskLoc), diskLoc)
+	curr[lastValue] = append(curr[lastValue].([]DiskLoc), diskLoc)
 
 	return nil
 }
 
 // Returns the set of documents with fields matching the specified document
-func (kds KeyedDocumentStore) get(doc common.Document) ([]common.DiskLoc, bool) {
+func (kds DocStore) get(doc Document) ([]DiskLoc, bool) {
 	curr := kds.data
 
 	for i := 0; i < len(kds.fields)-1; i++ { // skips last indexed field
@@ -80,10 +79,10 @@ func (kds KeyedDocumentStore) get(doc common.Document) ([]common.DiskLoc, bool) 
 	if !ok {
 		return nil, false
 	}
-	return matchedDocs.([]common.DiskLoc), true
+	return matchedDocs.([]DiskLoc), true
 }
 
-func (kds KeyedDocumentStore) Contains(doc common.Document) (bool, error) {
+func (kds DocStore) Contains(doc Document) (bool, error) {
 	diskLoc, ok := doc.DiskLoc()
 	if !ok {
 		data, err := json.MarshalIndent(doc, "", "  ")
@@ -106,7 +105,7 @@ func (kds KeyedDocumentStore) Contains(doc common.Document) (bool, error) {
 	return false, nil
 }
 
-func New(index mgo.Index) KeyedDocumentStore {
+func NewDocStore(index mgo.Index) DocStore {
 	keys := []string{}
 	for _, key := range index.Key {
 		field := key
@@ -116,5 +115,5 @@ func New(index mgo.Index) KeyedDocumentStore {
 		keys = append(keys, field)
 	}
 
-	return KeyedDocumentStore{fields: keys, data: anyMap{}}
+	return DocStore{fields: keys, data: anyMap{}}
 }

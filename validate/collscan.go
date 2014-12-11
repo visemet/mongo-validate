@@ -1,7 +1,6 @@
-package collscan
+package validate
 
 import (
-	"common"
 	"gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"
 )
@@ -11,8 +10,8 @@ type collScan struct {
 	err  error
 }
 
-func (cs *collScan) All() ([]common.Document, error) {
-	var docs []common.Document
+func (cs *collScan) All() ([]Document, error) {
+	var docs []Document
 	for doc, hadNext := cs.Next(); hadNext; doc, hadNext = cs.Next() {
 		if err := cs.Err(); err != nil {
 			return nil, err
@@ -22,8 +21,8 @@ func (cs *collScan) All() ([]common.Document, error) {
 	return docs, nil
 }
 
-func (cs *collScan) Next() (common.Document, bool) {
-	var data common.Document
+func (cs *collScan) Next() (Document, bool) {
+	var data Document
 	hadNext := cs.iter.Next(&data)
 	return data, hadNext
 }
@@ -36,7 +35,7 @@ func (cs *collScan) Close() error {
 	return cs.iter.Close()
 }
 
-func New(coll *mgo.Collection, index mgo.Index) common.Iter {
+func NewCollScan(coll *mgo.Collection, index mgo.Index) Iter {
 	cs := collScan{}
 
 	query := bson.M{

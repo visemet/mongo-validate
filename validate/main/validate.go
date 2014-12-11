@@ -1,17 +1,14 @@
 package main
 
 import (
-	"collscan"
-	"common"
-	"docstore"
 	"encoding/json"
 	"fmt"
 	"gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"
-	"indexscan"
 	"log"
 	"strings"
 	"time"
+	"validate"
 )
 
 // Output format of the listDatabases command
@@ -27,9 +24,9 @@ type databaseList struct {
 }
 
 type verifier struct {
-	dataIter  common.Iter
-	probeIter common.Iter
-	docStore  docstore.KeyedDocumentStore
+	dataIter  validate.Iter
+	probeIter validate.Iter
+	docStore  validate.DocStore
 }
 
 func (v verifier) validate(msg string) {
@@ -58,9 +55,9 @@ func (v verifier) validate(msg string) {
 
 func validateCollectionAgainstIndex(coll *mgo.Collection, index mgo.Index) {
 	v := verifier{
-		dataIter:  collscan.New(coll, index),
-		probeIter: indexscan.New(coll, index),
-		docStore:  docstore.New(index),
+		dataIter:  validate.NewCollScan(coll, index),
+		probeIter: validate.NewIndexScan(coll, index),
+		docStore:  validate.NewDocStore(index),
 	}
 
 	format := fmt.Sprintf("Document %%v found in collection '%v', but not index %v\n",
@@ -71,9 +68,9 @@ func validateCollectionAgainstIndex(coll *mgo.Collection, index mgo.Index) {
 
 func validateIndexAgainstCollection(coll *mgo.Collection, index mgo.Index) {
 	v := verifier{
-		dataIter:  indexscan.New(coll, index),
-		probeIter: collscan.New(coll, index),
-		docStore:  docstore.New(index),
+		dataIter:  validate.NewIndexScan(coll, index),
+		probeIter: validate.NewCollScan(coll, index),
+		docStore:  validate.NewDocStore(index),
 	}
 
 	format := fmt.Sprintf("Document %%v found in index %v, but not collection '%v'\n",

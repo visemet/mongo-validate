@@ -1,7 +1,6 @@
-package indexscan
+package validate
 
 import (
-	"common"
 	"errors"
 	"fmt"
 	"gopkg.in/mgo.v2"
@@ -14,8 +13,8 @@ type indexScan struct {
 	err         error
 }
 
-func (is *indexScan) All() ([]common.Document, error) {
-	var docs []common.Document
+func (is *indexScan) All() ([]Document, error) {
+	var docs []Document
 	for doc, hadNext := is.Next(); hadNext; doc, hadNext = is.Next() {
 		if err := is.Err(); err != nil {
 			return nil, err
@@ -25,22 +24,22 @@ func (is *indexScan) All() ([]common.Document, error) {
 	return docs, nil
 }
 
-func (is *indexScan) Next() (common.Document, bool) {
-	var data common.Document
-	var other common.Document
+func (is *indexScan) Next() (Document, bool) {
+	var data Document
+	var other Document
 
 	hadNext := is.dataIter.Next(&data)
 	if is.diskLocIter.Next(&other) != hadNext {
 		is.err = errors.New("Iterators ended on different documents")
-		return common.Document{}, false
+		return Document{}, false
 	} else if !hadNext {
-		return common.Document{}, false
+		return Document{}, false
 	}
 
 	if diskLoc, ok := other.DiskLoc(); ok {
-		data.SetDiskLoc(diskLoc)
+		data.setDiskLoc(diskLoc)
 	} else {
-		is.err = fmt.Errorf("Document is missing %v field", common.DiskLocField)
+		is.err = fmt.Errorf("Document is missing %v field", DiskLocField)
 	}
 
 	return data, true
@@ -58,7 +57,7 @@ func (is *indexScan) Close() error {
 	return is.diskLocIter.Close()
 }
 
-func New(coll *mgo.Collection, index mgo.Index) common.Iter {
+func NewIndexScan(coll *mgo.Collection, index mgo.Index) Iter {
 	is := indexScan{}
 
 	dataQuery := bson.M{

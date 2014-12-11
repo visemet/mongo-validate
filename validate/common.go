@@ -1,4 +1,4 @@
-package common
+package validate
 
 import (
 	"gopkg.in/mgo.v2/bson"
@@ -34,7 +34,7 @@ func (d Document) DiskLoc() (DiskLoc, bool) {
 	return DiskLoc{}, false
 }
 
-func (d Document) SetDiskLoc(dl DiskLoc) {
+func (d Document) setDiskLoc(dl DiskLoc) {
 	d[DiskLocField] = bson.M{
 		"file":   dl.File,
 		"offset": dl.Offset,
