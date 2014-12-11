@@ -3,12 +3,12 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/visemet/mongo-validate/validate"
 	"gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"
 	"log"
 	"strings"
 	"time"
-	"validate"
 )
 
 // Output format of the listDatabases command
