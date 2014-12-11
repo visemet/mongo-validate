@@ -2,6 +2,7 @@ package main
 
 import (
 	"collscan"
+	"common"
 	"docstore"
 	"encoding/json"
 	"fmt"
@@ -25,62 +26,60 @@ type databaseList struct {
 	Ok        int   `bson:"ok"`
 }
 
-func validateCollectionAgainstIndex(coll *mgo.Collection, index mgo.Index) {
-	collScan := collscan.New(coll, index)
-	indexScan := indexscan.New(coll, index)
+type verifier struct {
+	dataIter  common.Iter
+	probeIter common.Iter
+	docStore  docstore.KeyedDocumentStore
+}
 
-	docStore := docstore.New(index)
-	for doc, hadNext := collScan.Next(); hadNext; doc, hadNext = collScan.Next() {
-		if err := collScan.Err(); err != nil {
+func (v verifier) validate(msg string) {
+	for doc, hadNext := v.dataIter.Next(); hadNext; doc, hadNext = v.dataIter.Next() {
+		if err := v.dataIter.Err(); err != nil {
 			log.Fatal(err)
 		}
-		docStore.Put(doc)
+		v.docStore.Put(doc)
 	}
 
-	for doc, hadNext := indexScan.Next(); hadNext; doc, hadNext = indexScan.Next() {
-		if err := indexScan.Err(); err != nil {
+	for doc, hadNext := v.probeIter.Next(); hadNext; doc, hadNext = v.probeIter.Next() {
+		if err := v.probeIter.Err(); err != nil {
 			log.Fatal(err)
 		}
-		if found, err := docStore.Contains(doc); err != nil {
+		if found, err := v.docStore.Contains(doc); err != nil {
 			log.Fatal(err)
 		} else if !found {
 			data, err := json.MarshalIndent(doc, "", "  ")
 			if err != nil {
 				log.Fatal(err)
 			}
-			fmt.Printf("\nDocument %v found in collection '%v', but not index %v\n",
-				string(data), coll.FullName, index.Key)
+			fmt.Printf(msg, string(data))
 		}
 	}
 }
 
+func validateCollectionAgainstIndex(coll *mgo.Collection, index mgo.Index) {
+	v := verifier{
+		dataIter:  collscan.New(coll, index),
+		probeIter: indexscan.New(coll, index),
+		docStore:  docstore.New(index),
+	}
+
+	format := fmt.Sprintf("Document %%v found in collection '%v', but not index %v\n",
+		coll.FullName, index.Key)
+
+	v.validate(format)
+}
+
 func validateIndexAgainstCollection(coll *mgo.Collection, index mgo.Index) {
-	collScan := collscan.New(coll, index)
-	indexScan := indexscan.New(coll, index)
-
-	docStore := docstore.New(index)
-	for doc, hadNext := indexScan.Next(); hadNext; doc, hadNext = indexScan.Next() {
-		if err := indexScan.Err(); err != nil {
-			log.Fatal(err)
-		}
-		docStore.Put(doc)
+	v := verifier{
+		dataIter:  indexscan.New(coll, index),
+		probeIter: collscan.New(coll, index),
+		docStore:  docstore.New(index),
 	}
 
-	for doc, hadNext := collScan.Next(); hadNext; doc, hadNext = collScan.Next() {
-		if err := collScan.Err(); err != nil {
-			log.Fatal(err)
-		}
-		if found, err := docStore.Contains(doc); err != nil {
-			log.Fatal(err)
-		} else if !found {
-			data, err := json.MarshalIndent(doc, "", "  ")
-			if err != nil {
-				log.Fatal(err)
-			}
-			fmt.Printf("\nDocument %v found in index %v, but not collection '%v'\n",
-				string(data), index.Key, coll.FullName)
-		}
-	}
+	format := fmt.Sprintf("Document %%v found in index %v, but not collection '%v'\n",
+		coll.FullName, index.Key)
+
+	v.validate(format)
 }
 
 func isSpecialIndex(index mgo.Index) bool {
