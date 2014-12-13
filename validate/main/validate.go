@@ -60,8 +60,8 @@ func validateCollectionAgainstIndex(coll *mgo.Collection, index mgo.Index) {
 		docStore:  validate.NewDocStore(index),
 	}
 
-	format := fmt.Sprintf("Document %%v found in collection '%v', but not index %v\n",
-		coll.FullName, index.Key)
+	format := fmt.Sprintf("Document %%v found in index %v, but not collection '%v'\n",
+		index.Key, coll.FullName)
 
 	v.validate(format)
 }
@@ -73,7 +73,7 @@ func validateIndexAgainstCollection(coll *mgo.Collection, index mgo.Index) {
 		docStore:  validate.NewDocStore(index),
 	}
 
-	format := fmt.Sprintf("Document %%v found in index %v, but not collection '%v'\n",
+	format := fmt.Sprintf("Document %%v found in collection '%v', but not index %v\n",
 		coll.FullName, index.Key)
 
 	v.validate(format)
